@@ -43,7 +43,7 @@ class Config:
     # ========================================
     ALLOWED_ORIGINS_STR: str = os.getenv(
         'ALLOWED_ORIGINS', 
-        'http://localhost:3000,http://127.0.0.1:3000'
+        'http://localhost:3000,http://127.0.0.1:3000,http://localhost:80,http://localhost,http://127.0.0.1:80,http://127.0.0.1'
     )
     
     @property
