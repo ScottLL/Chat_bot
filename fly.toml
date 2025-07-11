@@ -1,70 +1,55 @@
 app = "defi-qa-chatbot"
-primary_region = "mia"  # Change to your preferred region
+primary_region = "mia"
 
 [build]
-  compose = "docker-compose.yml"
+  dockerfile = "backend/Dockerfile"
 
 [env]
   ENVIRONMENT = "production"
+  HOST = "0.0.0.0"
+  PORT = "8000"
+  DEBUG = "false"
+  RELOAD = "false"
+  ALLOWED_ORIGINS = "https://defi-qa-frontend.fly.dev,https://defi-qa-chatbot.fly.dev"
+  RATE_LIMIT_REQUESTS_PER_MINUTE = "100"
+  RATE_LIMIT_WINDOW_SECONDS = "60"
+  AGENT_SIMILARITY_THRESHOLD = "0.6"
+  AGENT_MAX_RESULTS = "3"
+  AGENT_CACHE_ENABLED = "true"
+  AGENT_LLM_MODEL = "gpt-4o-mini"
+  AGENT_EMBEDDING_MODEL = "text-embedding-3-small"
+  CACHE_DIR = "/app/persistent/cache"
+  CACHE_ENABLED = "true"
+  LOG_LEVEL = "INFO"
+  LOG_DIR = "/app/persistent/logs"
+  ENABLE_JSON_LOGS = "true"
+  ENABLE_CONSOLE_LOGS = "true"
+  MAX_CONCURRENT_REQUESTS = "10"
+  MONITORING_ENABLED = "true"
+  USE_HTTPS = "false"
+  TRUST_PROXY = "true"
 
-# HTTP service configuration - route traffic to frontend
 [http_service]
-  internal_port = 80
+  internal_port = 8000
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["frontend"]
 
 [[http_service.checks]]
   grace_period = "10s"
   interval = "30s"
   method = "GET"
   timeout = "5s"
-  path = "/"
-
-# Backend service configuration
-[[services]]
-  processes = ["backend"]
-  internal_port = 8000
-  protocol = "tcp"
-  auto_stop_machines = "stop"
-  auto_start_machines = true
-  min_machines_running = 1
-
-[[services.ports]]
-  port = 8000
-  handlers = ["http"]
-
-[[services.checks]]
-  grace_period = "10s"
-  interval = "30s"
-  method = "GET"
-  timeout = "5s"
   path = "/health"
 
-# Process definitions
-[processes]
-  backend = "backend"
-  frontend = "frontend"
-
-# VM configurations
 [[vm]]
   size = "shared-cpu-1x"
   memory = "1gb"
-  processes = ["backend"]
 
-[[vm]]
-  size = "shared-cpu-1x"
-  memory = "512mb"
-  processes = ["frontend"]
-
-# Volume for persistent data
 [[mounts]]
-  source = "data_volume"
-  destination = "/app/data"
-  processes = ["backend"]
+  source = "app_data"
+  destination = "/app/persistent"
 
-# Secrets configuration
 [deploy]
   strategy = "rolling" 

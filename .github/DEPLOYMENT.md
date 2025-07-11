@@ -35,9 +35,10 @@ flyctl apps create defi-qa-frontend
 
 ### 1. Combined Deployment (`deploy-combined.yml`)
 - **Triggers**: Push to `deploy` branch, manual dispatch
-- **Description**: Deploys both backend and frontend together using docker-compose
+- **Description**: Deploys the backend API service as the main application
 - **Fly.io App**: `defi-qa-chatbot`
-- **Configuration**: Uses root `fly.toml`
+- **Configuration**: Uses root `fly.toml` (backend-focused)
+- **Note**: This deploys the API service. For full-stack deployment, use individual backend + frontend deployments
 
 ### 2. Backend Only (`deploy-backend.yml`)
 - **Triggers**: Push to `deploy` branch (backend changes only), manual dispatch
