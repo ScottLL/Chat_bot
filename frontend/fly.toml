@@ -23,19 +23,10 @@ primary_region = "mia"  # Change to your preferred region
   timeout = "5s"
   path = "/"
 
-# Redirect HTTP to HTTPS
-[[http_service.http_options]]
-  response_headers = {"X-Frame-Options" = "DENY", "X-Content-Type-Options" = "nosniff"}
-
 # VM configuration
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"
-
-# Static file handling
-[[statics]]
-  guest_path = "/usr/share/nginx/html"
-  url_prefix = "/"
 
 # Deployment strategy
 [deploy]

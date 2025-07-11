@@ -1,0 +1,13 @@
+app = "defi-qa-backend-test"
+primary_region = "mia"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb" 

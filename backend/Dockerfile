@@ -25,13 +25,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Copy the DeFi dataset from local data directory
+# (Note: data/defi_qa_dataset.json should be copied to backend/data/ before building)
+COPY data /app/data
+
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
 # Create necessary directories
-RUN mkdir -p cache logs
+RUN mkdir -p cache logs persistent/cache persistent/logs persistent/data
 
 # Expose port
 EXPOSE 8000

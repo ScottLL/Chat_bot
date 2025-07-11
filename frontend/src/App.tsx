@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
 
-interface WebSocketMessage {
+interface ApiResponse {
   type: 'status' | 'metadata' | 'word' | 'complete' | 'error' | 'heartbeat';
   // Status message
   status?: string;
@@ -35,7 +35,6 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [sessionId, setSessionId] = useState<string | null>(null);
   
-  const websocketRef = useRef<WebSocket | null>(null);
   const answerRef = useRef<HTMLDivElement>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
@@ -48,156 +47,37 @@ function App() {
     }
   }, [answer]);
 
-  // WebSocket message handler - defined first to avoid circular dependency
-  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
-    switch (message.type) {
-      case 'status':
-        if (message.status === 'connected' && message.details?.session_id) {
-          setSessionId(message.details.session_id);
-          console.log('📱 Session ID:', message.details.session_id);
-        }
-        break;
+  // Test API connection on component mount
+  useEffect(() => {
+    testApiConnection();
+  }, []);
 
-      case 'metadata':
-        if (message.confidence !== undefined) {
-          setConfidence(message.confidence);
-        }
-        console.log('📊 Metadata received:', {
-          confidence: message.confidence,
-          total_words: message.total_words,
-          session_id: message.session_id
-        });
-        break;
-
-      case 'word':
-        if (message.content) {
-          setAnswer(prev => prev + (prev ? ' ' : '') + message.content);
-          if (message.confidence !== undefined) {
-            setConfidence(message.confidence);
-          }
-        }
-        break;
-
-      case 'complete':
-        setIsLoading(false);
-        if (message.final_confidence !== undefined) {
-          setConfidence(message.final_confidence);
-        }
-        console.log('✅ Streaming completed');
-        break;
-
-      case 'error':
-        setError(message.error || 'An error occurred while processing your question');
-        setIsLoading(false);
-        console.error('❌ Server error:', message.error);
-        break;
-
-      case 'heartbeat':
-        // Respond to heartbeat
-        if (websocketRef.current?.readyState === WebSocket.OPEN) {
-          websocketRef.current.send(JSON.stringify({
-            type: 'heartbeat_response'
-          }));
-        }
-        break;
-
-      default:
-        console.log('❓ Unknown message type:', message.type);
-    }
-  }, []); // State setters and refs are stable, so no dependencies needed
-
-  // WebSocket connection management
-  const connectWebSocket = useCallback(() => {
-    if (websocketRef.current?.readyState === WebSocket.OPEN) {
-      return; // Already connected
-    }
-
+  const testApiConnection = useCallback(async () => {
     try {
       setConnectionStatus('connecting');
-      // Use the nginx proxy path instead of direct backend connection
-      const wsUrl = window.location.protocol === 'https:' 
-        ? `wss://${window.location.host}/ws/ask`
-        : `ws://${window.location.host}/ws/ask`;
+      // Use the backend URL - prioritize environment variable, fallback to deployed backend
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://defi-qa-backend.fly.dev';
+      console.log('🔗 Testing API connection to:', apiUrl);
+      const response = await fetch(`${apiUrl}/health`);
       
-      console.log(`🔗 Attempting WebSocket connection to: ${wsUrl}`);
-      const ws = new WebSocket(wsUrl);
-      websocketRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected successfully');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ API Health Check:', data);
         setConnectionStatus('connected');
         setError(null);
         reconnectAttempts.current = 0;
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          console.log('📨 WebSocket message received:', message.type);
-          handleWebSocketMessage(message);
-        } catch (parseError) {
-          console.error('❌ Failed to parse WebSocket message:', event.data);
-        }
-      };
-
-      ws.onclose = (event) => {
-        console.log(`🔌 WebSocket disconnected - Code: ${event.code}, Reason: ${event.reason}`);
-        setConnectionStatus('disconnected');
         
-        // Only attempt reconnection if not closed intentionally (code 1000)
-        // and we haven't exceeded max attempts
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 10000);
-          console.log(`⏱️ Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})...`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
-            connectWebSocket();
-          }, delay);
-        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-          console.error('❌ Max reconnection attempts reached');
-          setError('Unable to connect to server. Please refresh the page and try again.');
-        } else {
-          console.log('ℹ️ WebSocket closed intentionally');
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
-        setConnectionStatus('error');
-        setError('Connection error. Please check your internet connection.');
-      };
-
-    } catch (error) {
-      console.error('❌ Failed to create WebSocket connection:', error);
+        // Generate a client-side session ID for tracking
+        setSessionId(`client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (connectionError) {
+      console.error('❌ API Connection failed:', connectionError);
       setConnectionStatus('error');
-      setError('Failed to establish connection. Please try again.');
+      setError(connectionError instanceof Error ? connectionError.message : 'Unknown connection error');
     }
-  }, [handleWebSocketMessage, maxReconnectAttempts]); // handleWebSocketMessage is now stable
-
-  const disconnectWebSocket = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    
-    if (websocketRef.current) {
-      websocketRef.current.close(1000, 'User disconnected');
-      websocketRef.current = null;
-    }
-    
-    setConnectionStatus('disconnected');
-    setSessionId(null);
-  }, []); // No dependencies needed
-
-  // Connect on component mount
-  useEffect(() => {
-    connectWebSocket();
-    
-    return () => {
-      disconnectWebSocket();
-    };
-  }, [connectWebSocket, disconnectWebSocket]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,9 +87,9 @@ function App() {
       return;
     }
 
-    if (connectionStatus !== 'connected' || !websocketRef.current) {
+    if (connectionStatus !== 'connected') {
       setError('Not connected to server. Please wait for connection...');
-      connectWebSocket();
+      testApiConnection();
       return;
     }
 
@@ -220,20 +100,74 @@ function App() {
     setIsLoading(true);
 
     try {
-      // Send question via WebSocket
-      const questionMessage = {
-        type: 'question',
-        data: {
-          question: question.trim()
-        }
-      };
+      // Use HTTP with Server-Sent Events instead of WebSocket
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://defi-qa-backend.fly.dev';
+      console.log('🔗 Sending question to:', `${apiUrl}/v2/ask-stream`);
+      
+      const response = await fetch(`${apiUrl}/v2/ask-stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify({ question: question.trim() }),
+      });
 
-      websocketRef.current.send(JSON.stringify(questionMessage));
-      console.log('📤 Question sent:', question.trim());
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body received');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let currentAnswer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ') && line.length > 6) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.type === 'word' && data.content) {
+                  currentAnswer += (currentAnswer ? ' ' : '') + data.content;
+                  setAnswer(currentAnswer);
+                  if (data.confidence !== undefined) {
+                    setConfidence(data.confidence);
+                  }
+                } else if (data.type === 'complete') {
+                  console.log('✅ Streaming complete:', data.processing_stage);
+                  if (data.final_confidence !== undefined) {
+                    setConfidence(data.final_confidence);
+                  }
+                  setIsLoading(false);
+                  break;
+                } else if (data.type === 'error') {
+                  throw new Error(data.error || 'Stream processing error');
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', line, parseError);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
 
     } catch (sendError) {
       console.error('Failed to send question:', sendError);
-      setError('Failed to send question. Please try again.');
+      setError(`Failed to process question: ${sendError instanceof Error ? sendError.message : 'Unknown error'}`);
       setIsLoading(false);
     }
   };
@@ -255,43 +189,40 @@ function App() {
 
   const manualReconnect = () => {
     console.log('🔄 Manual reconnection requested');
-    disconnectWebSocket();
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     reconnectAttempts.current = 0;
     setTimeout(() => {
-      connectWebSocket();
+      testApiConnection();
     }, 1000);
   };
 
-  const testWebSocketConnection = () => {
-    console.log('🧪 Testing basic WebSocket connection...');
-    const testWsUrl = window.location.protocol === 'https:' 
-      ? `wss://${window.location.host}/ws/test`
-      : `ws://${window.location.host}/ws/test`;
-    
-    const testWs = new WebSocket(testWsUrl);
-    
-    testWs.onopen = () => {
-      console.log('✅ Test WebSocket connected successfully');
-      testWs.send(JSON.stringify({ type: 'test', message: 'Hello from frontend' }));
-    };
-    
-    testWs.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('📨 Test WebSocket response:', message);
-        testWs.close();
-      } catch (e) {
-        console.error('❌ Failed to parse test WebSocket message:', event.data);
+  const testApiEndpoint = async () => {
+    console.log('🧪 Testing API endpoint...');
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://defi-qa-backend.fly.dev';
+      console.log('🔗 Testing endpoint:', `${apiUrl}/ask`);
+      const response = await fetch(`${apiUrl}/ask`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question: 'What is DeFi?' }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ API Test successful:', data);
+        alert('API test successful! Check console for details.');
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-    };
-    
-    testWs.onclose = (event) => {
-      console.log(`🔌 Test WebSocket closed - Code: ${event.code}, Reason: ${event.reason}`);
-    };
-    
-    testWs.onerror = (error) => {
-      console.error('❌ Test WebSocket error:', error);
-    };
+    } catch (testError) {
+      console.error('❌ API Test failed:', testError);
+      alert(`API test failed: ${testError}`);
+    }
   };
 
   const getConnectionStatusColor = () => {
@@ -321,7 +252,7 @@ function App() {
             <span className="title-main">Chaos Labs DeFi Q&A</span>
             <span className="title-subtitle">Instant answers to your DeFi questions</span>
           </h1>
-          
+
           {/* Connection Status */}
           <div className="connection-status">
             <div 
@@ -342,11 +273,11 @@ function App() {
                   Reconnect
                 </button>
                 <button 
-                  onClick={testWebSocketConnection}
+                  onClick={testApiEndpoint}
                   className="btn btn-secondary"
                   style={{ marginLeft: '5px', padding: '4px 8px', fontSize: '12px' }}
                 >
-                  Test WS
+                  Test API
                 </button>
               </>
             )}
@@ -374,7 +305,7 @@ function App() {
                 </span>
                 <div className="button-group">
                   {(answer || question) && (
-                    <button
+                    <button 
                       type="button"
                       onClick={clearAll}
                       className="btn btn-secondary"
@@ -383,7 +314,7 @@ function App() {
                       Clear
                     </button>
                   )}
-                  <button
+                  <button 
                     type="submit"
                     disabled={isLoading || !question.trim() || connectionStatus !== 'connected'}
                     className="btn btn-primary"
@@ -444,10 +375,10 @@ function App() {
                           <>
                             <p className="error-suggestion"><strong>Connection Issue:</strong></p>
                             <ul>
-                              <li>Check that the API server is running on <code>localhost:8000</code></li>
+                              <li>Check that the API server is running at <code>defi-qa-backend.fly.dev</code></li>
                               <li>Verify your internet connection</li>
                               <li>Try refreshing the page</li>
-                              <li>WebSocket connection may need time to establish</li>
+                              <li>API connection may need time to establish</li>
                             </ul>
                           </>
                         ) : error.includes('No match') || error.includes('no results') ? (
@@ -487,15 +418,15 @@ function App() {
                       <div className="answer-display">
                         {(() => {
                           // Parse answer to separate main content from references
-                          // Handle actual newlines (not string literals) from WebSocket stream
+                          // Handle actual newlines from streaming response
                           const referenceStartIndex = answer.search(/\n\n📚 \*\*Reference\*\*/);
                           
                           if (referenceStartIndex !== -1) {
                             // Split main answer from references
                             const mainAnswer = answer.substring(0, referenceStartIndex).trim();
-                            const referencesSection = answer.substring(referenceStartIndex + 2).trim(); // +2 to skip \n\n
+                            const referencesSection = answer.substring(referenceStartIndex + 2).trim();
                             
-                            // Extract all reference lines using actual newlines
+                            // Extract all reference lines
                             const referenceLines = referencesSection
                               .split('\n')
                               .filter(line => line.trim().startsWith('📚 **Reference**:'))
@@ -537,7 +468,6 @@ function App() {
                           }
                           
                           // Fallback: Check for references that might not have proper double newlines
-                          // This handles cases where WebSocket streaming affects formatting
                           else if (answer.includes('📚 **Reference**:')) {
                             const referenceRegex = /📚 \*\*Reference\*\*: (.+?)(?=📚 \*\*Reference\*\*:|$)/g;
                             const references = [];
@@ -657,7 +587,7 @@ function App() {
             >
               LangGraph
             </a>
-            {" "} • WebSocket Streaming
+            {" "} • HTTP Streaming
           </p>
         </footer>
       </div>

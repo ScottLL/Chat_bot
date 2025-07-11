@@ -1,0 +1,102 @@
+[
+  {
+    "id": "1",
+    "question": "What is the largest lending pool on Aave?",
+    "answer": "The largest lending pool on Aave is currently WETH with over $3B in TVL. WETH is widely used as collateral and for borrowing, making it the most liquid market on the protocol."
+  },
+  {
+    "id": "2",
+    "question": "How does Uniswap V3 concentrated liquidity work?",
+    "answer": "Uniswap V3 allows liquidity providers to concentrate their capital within custom price ranges. This means LPs can provide liquidity only within specific price boundaries, earning more fees when trading occurs within their chosen range but earning zero fees outside of it."
+  },
+  {
+    "id": "3",
+    "question": "What is the difference between APR and APY in DeFi?",
+    "answer": "APR (Annual Percentage Rate) is the simple interest rate without compounding, while APY (Annual Percentage Yield) includes compound interest. In DeFi, APY accounts for reinvesting rewards, making it higher than APR when rewards are compounded frequently."
+  },
+  {
+    "id": "4",
+    "question": "How do flash loans work on Aave?",
+    "answer": "Flash loans on Aave allow users to borrow any available amount of assets without collateral, as long as the liquidity is returned within the same transaction. They're useful for arbitrage, collateral swapping, and self-liquidation."
+  },
+  {
+    "id": "5",
+    "question": "What is impermanent loss in liquidity provision?",
+    "answer": "Impermanent loss occurs when the price ratio of tokens in a liquidity pool changes compared to when you deposited them. The loss is 'impermanent' because it only becomes permanent when you withdraw your liquidity at an unfavorable price ratio."
+  },
+  {
+    "id": "6",
+    "question": "How does Compound's interest rate model work?",
+    "answer": "Compound uses an algorithmic interest rate model where rates increase with utilization. As more of a market's liquidity is borrowed, both borrow and supply rates increase to incentivize more supply and discourage borrowing."
+  },
+  {
+    "id": "7",
+    "question": "What are the risks of yield farming?",
+    "answer": "Yield farming risks include smart contract vulnerabilities, impermanent loss, rug pulls, token price volatility, and changing reward rates. Always research protocols thoroughly and never invest more than you can afford to lose."
+  },
+  {
+    "id": "8",
+    "question": "How do automated market makers (AMMs) price assets?",
+    "answer": "AMMs use mathematical formulas to price assets. Uniswap V2 uses the constant product formula (x * y = k), where the product of token reserves remains constant. Price changes occur when trades alter the token ratios in the pool."
+  },
+  {
+    "id": "9",
+    "question": "What is Total Value Locked (TVL) in DeFi?",
+    "answer": "TVL represents the total dollar value of all cryptocurrency deposits in a DeFi protocol. It's a key metric for measuring a protocol's adoption and liquidity, calculated by multiplying token quantities by their current market prices."
+  },
+  {
+    "id": "10",
+    "question": "How does MakerDAO's DAI maintain its peg to USD?",
+    "answer": "DAI maintains its peg through collateralized debt positions (CDPs), the DAI Savings Rate (DSR), and market mechanisms. When DAI trades below $1, the DSR increases to incentivize holding. When above $1, minting becomes more attractive, increasing supply."
+  },
+  {
+    "id": "11",
+    "question": "What is MEV (Maximal Extractable Value)?",
+    "answer": "MEV is the maximum value that can be extracted from block production beyond standard block rewards. This includes profits from transaction ordering, front-running, back-running, and arbitrage opportunities within a block."
+  },
+  {
+    "id": "12",
+    "question": "How do governance tokens work in DeFi protocols?",
+    "answer": "Governance tokens give holders voting rights on protocol proposals such as parameter changes, upgrades, and treasury management. Token weight typically corresponds to voting power, enabling decentralized protocol governance."
+  },
+  {
+    "id": "13",
+    "question": "What are the different types of staking in DeFi?",
+    "answer": "DeFi staking includes: 1) Proof-of-Stake validation for network security, 2) Liquidity staking (like stETH), 3) Governance staking for protocol rewards, and 4) LP token staking in yield farms. Each has different risks and rewards."
+  },
+  {
+    "id": "14",
+    "question": "How do cross-chain bridges work?",
+    "answer": "Cross-chain bridges enable asset transfers between different blockchains. They typically work by locking assets on the source chain and minting equivalent tokens on the destination chain, or through validator networks that verify and relay transactions."
+  },
+  {
+    "id": "15",
+    "question": "What is the difference between synthetic assets and wrapped tokens?",
+    "answer": "Wrapped tokens are backed 1:1 by the underlying asset (like WBTC), while synthetic assets track price without direct backing, using collateral and oracles (like Synthetix synths). Synthetics offer exposure without holding the actual asset."
+  },
+  {
+    "id": "16",
+    "question": "How do DeFi insurance protocols like Nexus Mutual work?",
+    "answer": "DeFi insurance protocols pool capital from members to cover smart contract risks. Users stake tokens to assess risk and earn rewards. Claims are paid from the mutual pool when valid smart contract failures occur, with stakers voting on claim validity."
+  },
+  {
+    "id": "17",
+    "question": "What is slippage in DeFi trading?",
+    "answer": "Slippage is the difference between expected and actual trade prices due to market movement or low liquidity. Large trades in small pools experience more slippage. Setting slippage tolerance helps protect against unfavorable price execution."
+  },
+  {
+    "id": "18",
+    "question": "How do oracle networks provide price data to DeFi?",
+    "answer": "Oracle networks like Chainlink aggregate price data from multiple sources and deliver it on-chain. They use decentralized networks of nodes to prevent single points of failure and manipulation, crucial for lending, derivatives, and stablecoin protocols."
+  },
+  {
+    "id": "19",
+    "question": "What are the benefits of layer 2 solutions for DeFi?",
+    "answer": "Layer 2 solutions offer lower transaction fees, faster confirmation times, and better scalability while maintaining security through the underlying layer 1. Popular L2s for DeFi include Polygon, Arbitrum, and Optimism."
+  },
+  {
+    "id": "20",
+    "question": "How do liquid staking derivatives work?",
+    "answer": "Liquid staking derivatives allow users to stake tokens while receiving a liquid representation (like stETH for ETH). Users can earn staking rewards while still being able to trade, lend, or use their staked assets in other DeFi protocols."
+  }
+]
