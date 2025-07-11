@@ -26,7 +26,7 @@ COPY requirements.txt .
 RUN echo "Installing Python dependencies..." && \
     pip install --no-cache-dir --upgrade pip setuptools wheel && \
     echo "Installing packages from requirements.txt..." && \
-    pip install --no-cache-dir --timeout 300 --retries 3 --verbose -r requirements.txt && \
+    pip install --no-cache-dir --timeout 300 --retries 3 -r requirements.txt && \
     echo "Dependencies installed successfully!"
 
 # Copy application code
