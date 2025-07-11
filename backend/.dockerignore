@@ -1,0 +1,44 @@
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Testing and development
+test_*.py
+*_test.py
+pytest_cache/
+.coverage
+.pytest_cache/
+
+# Logs (will be created in container)
+logs/
+*.log
+
+# Documentation
+*.md
+docs/
+
+# Environment files (use environment variables instead)
+.env
+.env.* 

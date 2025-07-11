@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeFi Q&A Application - Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+        
+        .status-card {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border-left: 5px solid #667eea;
+        }
+        
+        .status-card.healthy {
+            border-left-color: #4CAF50;
+        }
+        
+        .status-card.warning {
+            border-left-color: #FF9800;
+        }
+        
+        .status-card.critical {
+            border-left-color: #F44336;
+        }
+        
+        .status-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .status-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-container h3 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.4em;
+        }
+        
+        .metrics-table {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        
+        .metrics-table h3 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        .update-time {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        
+        .alert-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-section.show {
+            display: block;
+        }
+        
+        .alert-section h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .health-score {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .health-score.excellent {
+            color: #4CAF50;
+        }
+        
+        .health-score.good {
+            color: #8BC34A;
+        }
+        
+        .health-score.warning {
+            color: #FF9800;
+        }
+        
+        .health-score.critical {
+            color: #F44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 DeFi Q&A Monitoring Dashboard</h1>
+            <p>Real-time application performance and health monitoring</p>
+        </div>
+        
+        <div class="alert-section" id="alertSection">
+            <h3>⚠️ Active Alerts</h3>
+            <div id="alertList"></div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-card" id="healthCard">
+                <h3>Health Score</h3>
+                <div class="status-value" id="healthScore">--</div>
+            </div>
+            <div class="status-card" id="requestsCard">
+                <h3>Total Requests</h3>
+                <div class="status-value" id="totalRequests">--</div>
+            </div>
+            <div class="status-card" id="errorRateCard">
+                <h3>Error Rate</h3>
+                <div class="status-value" id="errorRate">--%</div>
+            </div>
+            <div class="status-card" id="uptimeCard">
+                <h3>Uptime</h3>
+                <div class="status-value" id="uptime">--</div>
+            </div>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>📊 System Resources</h3>
+                <canvas id="systemChart" width="400" height="300"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h3>⚡ Request Performance</h3>
+                <canvas id="performanceChart" width="400" height="300"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h3>🌐 WebSocket Activity</h3>
+                <canvas id="websocketChart" width="400" height="300"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h3>🎯 Health Score Trend</h3>
+                <canvas id="healthChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+        
+        <div class="metrics-table">
+            <h3>📈 Detailed Performance Metrics</h3>
+            <table id="metricsTable">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Current Value</th>
+                        <th>Status</th>
+                        <th>Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody id="metricsBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="update-time">
+            Last updated: <span id="lastUpdate">--</span>
+        </div>
+    </div>
+
+    <script>
+        // Chart instances
+        let systemChart, performanceChart, websocketChart, healthChart;
+        
+        // Data storage for trends
+        let healthHistory = [];
+        let timestampHistory = [];
+        
+        // Initialize charts
+        function initCharts() {
+            // System Resources Chart
+            const systemCtx = document.getElementById('systemChart').getContext('2d');
+            systemChart = new Chart(systemCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Memory Used', 'Memory Free', 'CPU Usage', 'CPU Free'],
+                    datasets: [{
+                        data: [0, 100, 0, 100],
+                        backgroundColor: ['#FF6384', '#E8F5E8', '#36A2EB', '#E8F3FF'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(performanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Avg Response Time (ms)',
+                        data: [],
+                        backgroundColor: '#667eea',
+                        borderColor: '#764ba2',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Response Time (ms)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // WebSocket Chart
+            const websocketCtx = document.getElementById('websocketChart').getContext('2d');
+            websocketChart = new Chart(websocketCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Active Connections',
+                        data: [],
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Connections'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Health Score Trend Chart
+            const healthCtx = document.getElementById('healthChart').getContext('2d');
+            healthChart = new Chart(healthCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Health Score',
+                        data: [],
+                        borderColor: '#FF9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Health Score'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Fetch and update dashboard data
+        async function updateDashboard() {
+            try {
+                // Fetch health status
+                const healthResponse = await fetch('/health-status');
+                const healthData = await healthResponse.json();
+                
+                // Fetch performance stats
+                const performanceResponse = await fetch('/performance-stats');
+                const performanceData = await performanceResponse.json();
+                
+                // Update status cards
+                updateStatusCards(healthData, performanceData);
+                
+                // Update charts
+                updateCharts(healthData, performanceData);
+                
+                // Update metrics table
+                updateMetricsTable(healthData, performanceData);
+                
+                // Update alerts
+                updateAlerts(healthData);
+                
+                // Update last update time
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+                
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+                document.getElementById('lastUpdate').textContent = 'Error updating data';
+            }
+        }
+        
+        function updateStatusCards(healthData, performanceData) {
+            // Health Score
+            const healthScore = healthData.health_score || 0;
+            document.getElementById('healthScore').textContent = healthScore;
+            
+            const healthCard = document.getElementById('healthCard');
+            if (healthScore >= 90) {
+                healthCard.className = 'status-card healthy';
+            } else if (healthScore >= 70) {
+                healthCard.className = 'status-card warning';
+            } else {
+                healthCard.className = 'status-card critical';
+            }
+            
+            // Total Requests
+            document.getElementById('totalRequests').textContent = performanceData.requests?.total || 0;
+            
+            // Error Rate
+            const errorRate = performanceData.performance?.error_rate_percent || 0;
+            document.getElementById('errorRate').textContent = errorRate.toFixed(1) + '%';
+            
+            const errorCard = document.getElementById('errorRateCard');
+            if (errorRate < 1) {
+                errorCard.className = 'status-card healthy';
+            } else if (errorRate < 5) {
+                errorCard.className = 'status-card warning';
+            } else {
+                errorCard.className = 'status-card critical';
+            }
+            
+            // Uptime
+            document.getElementById('uptime').textContent = healthData.uptime || '--';
+        }
+        
+        function updateCharts(healthData, performanceData) {
+            const now = new Date().toLocaleTimeString();
+            
+            // Update System Resources Chart
+            const memoryUsed = healthData.system?.memory_usage_percent || 0;
+            const cpuUsed = healthData.system?.cpu_usage_percent || 0;
+            
+            systemChart.data.datasets[0].data = [
+                memoryUsed,
+                100 - memoryUsed,
+                cpuUsed,
+                100 - cpuUsed
+            ];
+            systemChart.update();
+            
+            // Update Performance Chart
+            const endpoints = performanceData.performance?.endpoints || {};
+            const endpointNames = Object.keys(endpoints).slice(0, 5); // Show top 5 endpoints
+            const responseTimes = endpointNames.map(endpoint => 
+                (endpoints[endpoint]?.avg_response_time * 1000) || 0
+            );
+            
+            performanceChart.data.labels = endpointNames;
+            performanceChart.data.datasets[0].data = responseTimes;
+            performanceChart.update();
+            
+            // Update WebSocket Chart (simulated for now)
+            const activeConnections = healthData.application?.active_websocket_connections || 0;
+            
+            if (websocketChart.data.labels.length > 10) {
+                websocketChart.data.labels.shift();
+                websocketChart.data.datasets[0].data.shift();
+            }
+            
+            websocketChart.data.labels.push(now);
+            websocketChart.data.datasets[0].data.push(activeConnections);
+            websocketChart.update();
+            
+            // Update Health Score Trend
+            if (healthChart.data.labels.length > 20) {
+                healthChart.data.labels.shift();
+                healthChart.data.datasets[0].data.shift();
+            }
+            
+            healthChart.data.labels.push(now);
+            healthChart.data.datasets[0].data.push(healthData.health_score || 0);
+            healthChart.update();
+        }
+        
+        function updateMetricsTable(healthData, performanceData) {
+            const metricsBody = document.getElementById('metricsBody');
+            const now = new Date().toLocaleString();
+            
+            const metrics = [
+                {
+                    name: 'Memory Usage',
+                    value: `${(healthData.system?.memory_usage_percent || 0).toFixed(1)}%`,
+                    status: (healthData.system?.memory_usage_percent || 0) > 80 ? 'Warning' : 'Good'
+                },
+                {
+                    name: 'CPU Usage',
+                    value: `${(healthData.system?.cpu_usage_percent || 0).toFixed(1)}%`,
+                    status: (healthData.system?.cpu_usage_percent || 0) > 80 ? 'Warning' : 'Good'
+                },
+                {
+                    name: 'Error Rate',
+                    value: `${(performanceData.performance?.error_rate_percent || 0).toFixed(2)}%`,
+                    status: (performanceData.performance?.error_rate_percent || 0) > 5 ? 'Critical' : 'Good'
+                },
+                {
+                    name: 'Request Rate',
+                    value: `${performanceData.requests?.requests_per_minute || 0}/min`,
+                    status: 'Good'
+                },
+                {
+                    name: 'Active Sessions',
+                    value: healthData.application?.active_websocket_connections || 0,
+                    status: 'Good'
+                }
+            ];
+            
+            metricsBody.innerHTML = metrics.map(metric => `
+                <tr>
+                    <td>${metric.name}</td>
+                    <td>${metric.value}</td>
+                    <td style="color: ${metric.status === 'Good' ? '#4CAF50' : metric.status === 'Warning' ? '#FF9800' : '#F44336'}">${metric.status}</td>
+                    <td>${now}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function updateAlerts(healthData) {
+            const alertSection = document.getElementById('alertSection');
+            const alertList = document.getElementById('alertList');
+            
+            const issues = healthData.issues || [];
+            
+            if (issues.length > 0) {
+                alertSection.classList.add('show');
+                alertList.innerHTML = issues.map(issue => `
+                    <div style="padding: 10px; margin: 5px 0; background: #fff; border-radius: 5px; border-left: 4px solid #FF9800;">
+                        <strong>${issue.type || 'Alert'}:</strong> ${issue.message || 'System issue detected'}
+                    </div>
+                `).join('');
+            } else {
+                alertSection.classList.remove('show');
+            }
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            updateDashboard();
+            
+            // Update every 5 seconds
+            setInterval(updateDashboard, 5000);
+        });
+    </script>
+</body>
+</html> 

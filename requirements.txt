@@ -1,0 +1,29 @@
+# DeFi Q&A Bot - Production Dependencies
+# This file includes all backend dependencies for cloud deployment
+
+# Core FastAPI and ASGI
+fastapi==0.116.0
+uvicorn==0.35.0
+python-multipart==0.0.18
+
+# LangGraph and AI
+langgraph==0.5.2
+langchain==0.3.26
+langchain-openai==0.3.27
+openai==1.94.0
+
+# Async and HTTP
+httpx==0.29.0
+aiofiles==24.1.0
+
+# Data processing
+numpy==2.3.1
+python-dotenv==1.1.1
+
+# Monitoring and metrics  
+loguru==0.7.2
+psutil==6.1.0
+prometheus-client==0.21.1
+
+# Production server (for platforms that don't use uvicorn)
+gunicorn==23.0.0 
