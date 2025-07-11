@@ -4,7 +4,7 @@ A modern, AI-powered question-answering system specialized in Decentralized Fina
 
 ![](img/ezgif-5eb1f8ebf8c951.gif)
 
-You can try the live app ![here](https://defi-qa-frontend.fly.dev/) (you might wait a while for app loading)
+You can try the live app [here](https://defi-qa-frontend.fly.dev/) (you might wait a while for app loading)
 
 ## 🚀 Features
 
