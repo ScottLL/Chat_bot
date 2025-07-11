@@ -4,7 +4,7 @@ A modern, AI-powered question-answering system specialized in Decentralized Fina
 
 ![](img/ezgif-5eb1f8ebf8c951.gif)
 
-You can try the live app [here](https://defi-qa-frontend.fly.dev/) (you might wait a while for app loading)
+You can try the live app [here](https://defi-qa-frontend.fly.dev/) (you might wait a while for app loading) (Fly.io trial ends on July 19th, so the link will not avaliable after that)
 
 ## 🚀 Features
 
@@ -157,14 +157,55 @@ docker-compose up --build -d
 
 ## 🚀 Cloud Deployment
 
-The application supports deployment to multiple cloud platforms:
+### Recommended Platform: Fly.io
 
-| Platform          | Configuration File | Quick Deploy             |
-| ----------------- | ------------------ | ------------------------ |
-| **Heroku**  | `Procfile`       | `git push heroku main` |
-| **Railway** | `railway.toml`   | Connect GitHub repo      |
-| **Render**  | `render.yaml`    | Blueprint deployment     |
-| **Vercel**  | `vercel.json`    | `vercel deploy`        |
+This application is currently deployed on **Fly.io** due to specific technical requirements. You can access the live demo at: https://defi-qa-frontend.fly.dev/
+
+### Deployment Challenges & Solutions
+
+#### ⚠️ Vercel Limitation
+
+**Important**: This application **cannot be deployed on Vercel** due to the [250MB serverless function limit](https://vercel.com/guides/troubleshooting-function-250mb-limit). The combination of:
+
+- Large ML/AI dependencies (OpenAI, LangGraph, sentence transformers)
+- Extensive NLP libraries and models
+- DeFi dataset and embeddings cache
+- FastAPI and associated dependencies
+
+Results in a bundle size that exceeds Vercel's 250MB unzipped limit for serverless functions. While the `vercel.json` configuration file exists in the repository, **deployment will fail** with a "Serverless Function has exceeded the unzipped maximum size" error.
+
+#### ✅ Fly.io Solution
+
+**Fly.io** was chosen as the deployment platform because:
+
+- **No function size limits**: Supports applications with large dependencies
+- **Persistent storage**: Better handling of cache files and datasets
+- **Container-based**: Full Docker support for complex Python applications
+- **WebSocket support**: Native support for real-time features
+- **Global edge network**: Fast performance worldwide
+
+### Supported Deployment Platforms
+
+| Platform          | Configuration File | Status | Notes             |
+| ----------------- | ------------------ | ------ | ----------------- |
+| **Fly.io**      | `fly.toml`        | ✅ **Recommended** | Currently deployed |
+| **Heroku**        | `Procfile`        | ✅ Compatible | Large slug size |
+| **Railway**       | `railway.toml`    | ✅ Compatible | Good Docker support |
+| **Render**        | `render.yaml`     | ✅ Compatible | Blueprint deployment |
+| **Vercel**        | `vercel.json`     | ❌ **Not Compatible** | 250MB limit exceeded |
+
+### Fly.io Deployment
+
+```bash
+# Install Fly CLI
+curl -L https://fly.io/install.sh | sh
+
+# Deploy the application
+fly deploy
+
+# Set environment variables
+fly secrets set OPENAI_API_KEY=your-key-here
+```
 
 ### Environment Variables for Production
 
