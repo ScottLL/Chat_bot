@@ -44,7 +44,7 @@ echo ""
 # Check for existing Fly.io apps
 echo "🔍 Checking for existing Fly.io apps..."
 
-APPS=("defi-qa-chatbot" "defi-qa-backend" "defi-qa-frontend")
+APPS=("defi-qa-backend" "defi-qa-frontend")
 MISSING_APPS=()
 
 for app in "${APPS[@]}"; do
