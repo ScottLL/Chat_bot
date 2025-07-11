@@ -803,6 +803,37 @@ async def get_rate_limit_status():
 
 
 # WebSocket endpoints
+@app.websocket("/ws/test")
+async def websocket_test_endpoint(websocket: WebSocket):
+    """Simple test WebSocket endpoint without dependencies."""
+    try:
+        await websocket.accept()
+        await websocket.send_text(json.dumps({
+            "type": "status",
+            "status": "connected",
+            "message": "Test WebSocket connection successful"
+        }))
+        
+        while True:
+            try:
+                data = await websocket.receive_text()
+                message = json.loads(data)
+                await websocket.send_text(json.dumps({
+                    "type": "echo",
+                    "message": f"Received: {message}"
+                }))
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "error": str(e)
+                }))
+                
+    except Exception as e:
+        print(f"❌ Test WebSocket error: {e}")
+
+
 @app.websocket("/ws/ask")
 async def websocket_ask_endpoint(
     websocket: WebSocket,
@@ -837,40 +868,54 @@ async def websocket_ask_endpoint(
     - {"type": "status", "status": "connected/streaming/paused"}
     """
     logger = get_logger()
-    
-    # Connect to WebSocket manager
-    session_id = await websocket_manager.connect(websocket, session, agent)
-    connection = websocket_manager.get_connection(session_id)
-    
-    # Log WebSocket connection
-    logger.log_websocket_event(
-        event_type="connected",
-        session_id=session_id,
-        connection_count=len(websocket_manager.active_connections)
-    )
-    
-    # Record WebSocket connection metrics
-    metrics_collector.record_websocket_connection(
-        status="connected",
-        active_count=len(websocket_manager.active_connections)
-    )
-    
-    # Send initial status message
-    status_msg = create_status_message("connected", {
-        "session_id": session_id,
-        "capabilities": ["streaming", "cancellation", "pause_resume"],
-        "protocol_version": "1.0"
-    })
-    await websocket_manager.send_message(session_id, status_msg)
+    session_id = None
     
     try:
+        print(f"🔍 WebSocket connection attempt - Session: {session.session_id}")
+        logger.logger.info(f"WebSocket connection attempt for session {session.session_id}")
+        
+        # Connect to WebSocket manager
+        session_id = await websocket_manager.connect(websocket, session, agent)
+        connection = websocket_manager.get_connection(session_id)
+        
+        print(f"✅ WebSocket connected - Session: {session_id}")
+        
+        # Log WebSocket connection
+        logger.log_websocket_event(
+            event_type="connected",
+            session_id=session_id,
+            connection_count=len(websocket_manager.active_connections)
+        )
+        
+        # Record WebSocket connection metrics
+        metrics_collector.record_websocket_connection(
+            status="connected",
+            active_count=len(websocket_manager.active_connections)
+        )
+        
+        # Send initial status message
+        status_msg = create_status_message("connected", {
+            "session_id": session_id,
+            "capabilities": ["streaming", "cancellation", "pause_resume"],
+            "protocol_version": "1.0"
+        })
+        try:
+            await websocket_manager.send_message(session_id, status_msg)
+            print(f"📤 Sent initial status message to session {session_id}")
+        except Exception as send_error:
+            print(f"🔌 Failed to send initial status message to {session_id}: {send_error}")
+            # If we can't send the initial message, the connection is likely broken
+            raise WebSocketDisconnect(code=1000, reason="Failed to send initial message")
+        
+        # Message receiving loop with proper disconnect handling
         while True:
-            # Receive message from client
             try:
+                # Receive message from client
                 message_text = await websocket.receive_text()
                 message = json.loads(message_text)
                 
                 message_type = message.get("type")
+                print(f"📨 Received message type: {message_type} for session {session_id}")
                 
                 if message_type == WebSocketMessageType.QUESTION:
                     await handle_websocket_question(session_id, message, connection)
@@ -889,50 +934,86 @@ async def websocket_ask_endpoint(
                 
                 else:
                     error_msg = create_error_message(f"Unknown message type: {message_type}")
-                    await websocket_manager.send_message(session_id, error_msg)
+                    try:
+                        await websocket_manager.send_message(session_id, error_msg)
+                    except Exception as send_error:
+                        print(f"🔌 Failed to send unknown message type error to {session_id}: {send_error}")
+                        break
                     
-            except json.JSONDecodeError:
-                error_msg = create_error_message("Invalid JSON message format")
-                await websocket_manager.send_message(session_id, error_msg)
+            except WebSocketDisconnect as e:
+                print(f"🔌 WebSocket disconnected during message loop - Session: {session_id}, Code: {e.code if hasattr(e, 'code') else 'unknown'}")
+                # Break out of the loop cleanly - don't try to continue receiving
+                break
+                
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON decode error in session {session_id}: {e}")
+                try:
+                    error_msg = create_error_message("Invalid JSON message format")
+                    await websocket_manager.send_message(session_id, error_msg)
+                except Exception:
+                    # If we can't send the error message, the connection is likely broken
+                    print(f"🔌 Cannot send error message - connection broken for session {session_id}")
+                    break
             
             except Exception as e:
-                error_msg = create_error_message(f"Message processing error: {str(e)}")
-                await websocket_manager.send_message(session_id, error_msg)
+                print(f"❌ Message processing error in session {session_id}: {e}")
+                # Only try to send error message if the error isn't related to a broken connection
+                error_str = str(e).lower()
+                if "disconnect" in error_str or "closed" in error_str or "receive" in error_str:
+                    print(f"🔌 Connection-related error, breaking loop for session {session_id}")
+                    break
                 
-    except WebSocketDisconnect:
-        logger.log_websocket_event(
-            event_type="disconnected",
-            session_id=session_id,
-            connection_count=len(websocket_manager.active_connections) - 1,
-            reason="client_disconnect"
-        )
-        # Record WebSocket disconnection metrics
-        metrics_collector.record_websocket_connection(
-            status="disconnected",
-            active_count=len(websocket_manager.active_connections) - 1
-        )
+                try:
+                    error_msg = create_error_message(f"Message processing error: {str(e)}")
+                    await websocket_manager.send_message(session_id, error_msg)
+                except Exception:
+                    # If we can't send the error message, the connection is likely broken
+                    print(f"🔌 Cannot send error message - connection broken for session {session_id}")
+                    break
+                
+    except WebSocketDisconnect as e:
+        print(f"🔌 WebSocket disconnected - Session: {session_id}, Code: {e.code if hasattr(e, 'code') else 'unknown'}")
+        if session_id:
+            logger.log_websocket_event(
+                event_type="disconnected",
+                session_id=session_id,
+                connection_count=len(websocket_manager.active_connections) - 1,
+                reason="client_disconnect"
+            )
+            # Record WebSocket disconnection metrics
+            metrics_collector.record_websocket_connection(
+                status="disconnected",
+                active_count=len(websocket_manager.active_connections) - 1
+            )
     except Exception as e:
-        logger.log_websocket_event(
-            event_type="error",
-            session_id=session_id,
-            connection_count=len(websocket_manager.active_connections),
-            error=str(e)
-        )
-        logger.log_error(e, f"WebSocket error for session {session_id}", session_id=session_id)
+        print(f"❌ WebSocket error - Session: {session_id}, Error: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        if session_id:
+            logger.log_websocket_event(
+                event_type="error",
+                session_id=session_id,
+                connection_count=len(websocket_manager.active_connections),
+                error=str(e)
+            )
+            logger.log_error(e, f"WebSocket error for session {session_id}", session_id=session_id)
     finally:
-        # Clean up connection
-        await websocket_manager.disconnect(websocket)
-        
-        # Clean up the session manually since we didn't use context manager
-        async with session_manager._lock:
-            if session_id in session_manager._sessions:
-                del session_manager._sessions[session_id]
-        
-        logger.log_websocket_event(
-            event_type="cleanup",
-            session_id=session_id,
-            connection_count=len(websocket_manager.active_connections)
-        )
+        if session_id:
+            print(f"🧹 Cleaning up WebSocket connection for session {session_id}")
+            # Clean up connection
+            await websocket_manager.disconnect(websocket)
+            
+            # Clean up the session manually since we didn't use context manager
+            async with session_manager._lock:
+                if session_id in session_manager._sessions:
+                    del session_manager._sessions[session_id]
+            
+            logger.log_websocket_event(
+                event_type="cleanup",
+                session_id=session_id,
+                connection_count=len(websocket_manager.active_connections)
+            )
 
 
 async def handle_websocket_question(session_id: str, message: Dict[str, Any], connection):
@@ -946,7 +1027,11 @@ async def handle_websocket_question(session_id: str, message: Dict[str, Any], co
         
         if not question:
             error_msg = create_error_message("Question cannot be empty")
-            await websocket_manager.send_message(session_id, error_msg)
+            if websocket_manager.is_connection_active(session_id):
+                try:
+                    await websocket_manager.send_message(session_id, error_msg)
+                except Exception as send_error:
+                    print(f"🔌 Failed to send empty question error to {session_id}: {send_error}")
             return
         
         # Log question received
@@ -971,7 +1056,12 @@ async def handle_websocket_question(session_id: str, message: Dict[str, Any], co
         
         # Send status update
         status_msg = create_status_message("streaming")
-        await websocket_manager.send_message(session_id, status_msg)
+        if websocket_manager.is_connection_active(session_id):
+            try:
+                await websocket_manager.send_message(session_id, status_msg)
+            except Exception as send_error:
+                print(f"🔌 Failed to send streaming status to {session_id}: {send_error}")
+                return  # Exit early if we can't send status
         
         # Stream response from async agent
         word_count = 0
@@ -995,7 +1085,11 @@ async def handle_websocket_question(session_id: str, message: Dict[str, Any], co
                         total_words=chunk.get("total_words", 0),
                         session_id=session_id
                     )
-                    await websocket_manager.send_message(session_id, metadata_msg)
+                    try:
+                        await websocket_manager.send_message(session_id, metadata_msg)
+                    except Exception as send_error:
+                        print(f"🔌 Failed to send metadata message to {session_id}: {send_error}")
+                        break
                 
                 elif chunk.get("type") == "word":
                     # Send word message
@@ -1004,8 +1098,12 @@ async def handle_websocket_question(session_id: str, message: Dict[str, Any], co
                         index=chunk.get("index", word_count),
                         confidence=chunk.get("confidence", 0.0)
                     )
-                    await websocket_manager.send_message(session_id, word_msg)
-                    word_count += 1
+                    try:
+                        await websocket_manager.send_message(session_id, word_msg)
+                        word_count += 1
+                    except Exception as send_error:
+                        print(f"🔌 Failed to send word message to {session_id}: {send_error}")
+                        break
                 
                 elif chunk.get("type") == "complete":
                     processing_stage = chunk.get("processing_stage", "completed")
@@ -1017,7 +1115,10 @@ async def handle_websocket_question(session_id: str, message: Dict[str, Any], co
                         final_confidence=confidence,
                         total_words=chunk.get("total_words", word_count)
                     )
-                    await websocket_manager.send_message(session_id, complete_msg)
+                    try:
+                        await websocket_manager.send_message(session_id, complete_msg)
+                    except Exception as send_error:
+                        print(f"🔌 Failed to send completion message to {session_id}: {send_error}")
                     break
                 
                 elif chunk.get("type") == "error":
@@ -1029,13 +1130,21 @@ async def handle_websocket_question(session_id: str, message: Dict[str, Any], co
                         error=error,
                         processing_stage=processing_stage
                     )
-                    await websocket_manager.send_message(session_id, error_msg)
+                    try:
+                        await websocket_manager.send_message(session_id, error_msg)
+                    except Exception as send_error:
+                        print(f"🔌 Failed to send error message to {session_id}: {send_error}")
                     break
         
         except Exception as e:
             error = str(e)
             error_msg = create_error_message(f"Streaming error: {error}")
-            await websocket_manager.send_message(session_id, error_msg)
+            # Only try to send error message if connection is still active
+            if websocket_manager.is_connection_active(session_id):
+                try:
+                    await websocket_manager.send_message(session_id, error_msg)
+                except Exception as send_error:
+                    print(f"🔌 Failed to send streaming error message to {session_id}: {send_error}")
         
         finally:
             # Log agent processing performance
@@ -1053,13 +1162,21 @@ async def handle_websocket_question(session_id: str, message: Dict[str, Any], co
             connection.is_streaming = False
             # Send final status only if connection is still active
             if websocket_manager.is_connection_active(session_id):
-                status_msg = create_status_message("ready")
-                await websocket_manager.send_message(session_id, status_msg)
+                try:
+                    status_msg = create_status_message("ready")
+                    await websocket_manager.send_message(session_id, status_msg)
+                except Exception as send_error:
+                    print(f"🔌 Failed to send ready status to {session_id}: {send_error}")
     
     except Exception as e:
         processing_time = time.time() - start_time
-        error_msg = create_error_message(f"Question processing error: {str(e)}")
-        await websocket_manager.send_message(session_id, error_msg)
+        # Only try to send error message if connection is still active
+        if websocket_manager.is_connection_active(session_id):
+            try:
+                error_msg = create_error_message(f"Question processing error: {str(e)}")
+                await websocket_manager.send_message(session_id, error_msg)
+            except Exception as send_error:
+                print(f"🔌 Failed to send processing error message to {session_id}: {send_error}")
         
         # Log the error
         logger.log_error(e, "WebSocket question processing", session_id=session_id)

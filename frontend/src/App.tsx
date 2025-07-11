@@ -262,6 +262,38 @@ function App() {
     }, 1000);
   };
 
+  const testWebSocketConnection = () => {
+    console.log('🧪 Testing basic WebSocket connection...');
+    const testWsUrl = window.location.protocol === 'https:' 
+      ? `wss://${window.location.host}/ws/test`
+      : `ws://${window.location.host}/ws/test`;
+    
+    const testWs = new WebSocket(testWsUrl);
+    
+    testWs.onopen = () => {
+      console.log('✅ Test WebSocket connected successfully');
+      testWs.send(JSON.stringify({ type: 'test', message: 'Hello from frontend' }));
+    };
+    
+    testWs.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('📨 Test WebSocket response:', message);
+        testWs.close();
+      } catch (e) {
+        console.error('❌ Failed to parse test WebSocket message:', event.data);
+      }
+    };
+    
+    testWs.onclose = (event) => {
+      console.log(`🔌 Test WebSocket closed - Code: ${event.code}, Reason: ${event.reason}`);
+    };
+    
+    testWs.onerror = (error) => {
+      console.error('❌ Test WebSocket error:', error);
+    };
+  };
+
   const getConnectionStatusColor = () => {
     switch (connectionStatus) {
       case 'connected': return '#10b981';
@@ -301,13 +333,22 @@ function App() {
               <span className="session-id">Session: {sessionId.slice(0, 8)}...</span>
             )}
             {(connectionStatus === 'error' || connectionStatus === 'disconnected') && (
-              <button 
-                onClick={manualReconnect}
-                className="btn btn-secondary"
-                style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '12px' }}
-              >
-                Reconnect
-              </button>
+              <>
+                <button 
+                  onClick={manualReconnect}
+                  className="btn btn-secondary"
+                  style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '12px' }}
+                >
+                  Reconnect
+                </button>
+                <button 
+                  onClick={testWebSocketConnection}
+                  className="btn btn-secondary"
+                  style={{ marginLeft: '5px', padding: '4px 8px', fontSize: '12px' }}
+                >
+                  Test WS
+                </button>
+              </>
             )}
           </div>
         </header>
