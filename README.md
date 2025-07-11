@@ -1,8 +1,11 @@
 # DeFi Q&A Bot 🤖💰
 
 A modern, AI-powered question-answering system specialized in Decentralized Finance (DeFi) topics. Built with **LangGraph orchestration**, **FastAPI**, and **React**, featuring real-time streaming responses and advanced semantic search capabilities.
+https://github.com/user-attachments/assets/ed56bc3b-548f-4dea-b12f-04b398feb53a
+
 
 ## 🚀 Features
+
 
 ### Core Capabilities
 
