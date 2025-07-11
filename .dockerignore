@@ -1,0 +1,60 @@
+# Git and version control
+.git
+.gitignore
+.github
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Development files
+.env
+.env.local
+.env.example
+docker.env.example
+environment_template.txt
+
+# Cache and temporary files
+cache/
+cache_test/
+**/__pycache__/
+**/.pytest_cache/
+**/node_modules/
+**/.cache/
+**/logs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Build artifacts
+**/build/
+**/dist/
+**/.next/
+
+# Test files
+**/tests/
+**/*.test.*
+**/test_*
+pytest.ini
+
+# Development dependencies
+**/package-lock.json
+Procfile
+railway.toml
+render.yaml
+vercel.json
+heroku.yml
+
+# Backend specific ignores
+backend/env/
+backend/logs/
+backend/cache/
+
+# Frontend specific ignores  
+frontend/cache/
+frontend/node_modules/ 

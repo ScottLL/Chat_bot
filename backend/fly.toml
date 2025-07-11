@@ -1,0 +1,48 @@
+app = "defi-qa-backend"
+primary_region = "mia"  # Change to your preferred region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ENVIRONMENT = "production"
+  HOST = "0.0.0.0"
+  PORT = "8000"
+
+# HTTP service configuration for backend API
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/health"
+
+# VM configuration
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+
+# Volume for persistent data and cache
+[[mounts]]
+  source = "data_volume"
+  destination = "/app/data"
+
+[[mounts]]
+  source = "cache_volume"
+  destination = "/app/cache"
+
+[[mounts]]
+  source = "logs_volume"
+  destination = "/app/logs"
+
+# Deployment strategy
+[deploy]
+  strategy = "rolling"
+  release_command = "python verify_imports.py" 

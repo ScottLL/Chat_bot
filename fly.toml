@@ -1,0 +1,70 @@
+app = "defi-qa-chatbot"
+primary_region = "mia"  # Change to your preferred region
+
+[build]
+  compose = "docker-compose.yml"
+
+[env]
+  ENVIRONMENT = "production"
+
+# HTTP service configuration - route traffic to frontend
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["frontend"]
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/"
+
+# Backend service configuration
+[[services]]
+  processes = ["backend"]
+  internal_port = 8000
+  protocol = "tcp"
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[services.ports]]
+  port = 8000
+  handlers = ["http"]
+
+[[services.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/health"
+
+# Process definitions
+[processes]
+  backend = "backend"
+  frontend = "frontend"
+
+# VM configurations
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  processes = ["backend"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["frontend"]
+
+# Volume for persistent data
+[[mounts]]
+  source = "data_volume"
+  destination = "/app/data"
+  processes = ["backend"]
+
+# Secrets configuration
+[deploy]
+  strategy = "rolling" 
