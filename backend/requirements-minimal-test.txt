@@ -1,0 +1,18 @@
+# Minimal working set
+fastapi==0.116.0
+uvicorn==0.35.0
+python-multipart==0.0.20
+python-dotenv==1.1.1
+httpx==0.28.1
+pydantic==2.11.7
+starlette==0.46.2
+anyio==4.9.0
+
+# Essential AI packages only
+openai==1.25.0
+langchain==0.1.0
+langchain-openai==0.1.0
+
+# Basic utilities
+loguru==0.7.2
+requests==2.32.4
