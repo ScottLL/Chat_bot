@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
+# Cache buster: update this number to force rebuild
+ARG CACHE_BUST=20250112
 COPY requirements.txt .
 RUN echo "Installing Python dependencies..." && \
     pip install --no-cache-dir --upgrade pip setuptools wheel && \
